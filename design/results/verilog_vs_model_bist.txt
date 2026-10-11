@@ -1,0 +1,11 @@
+  seq 0  up 100 ms  I 5838 pA  T 32.81 C  batt 89 %  flags 1  islet a/b/d 0/23/8
+  seq 1  up 200 ms  I 5838 pA  T 32.81 C  batt 89 %  flags 1  islet a/b/d 0/24/8
+  seq 2  up 300 ms  I 5838 pA  T 32.81 C  batt 89 %  flags 0  islet a/b/d 0/24/8
+  seq 3  up 400 ms  I 5838 pA  T 32.81 C  batt 89 %  flags 0  islet a/b/d 0/24/8
+  seq 4  up 500 ms  I 5838 pA  T 32.81 C  batt 89 %  flags 0  islet a/b/d 0/24/9
+  seq 5  up 600 ms  I 5838 pA  T 32.81 C  batt 89 %  flags 0  islet a/b/d 0/24/8
+  seq 6  up 700 ms  I 5838 pA  T 32.81 C  batt 89 %  flags 0  islet a/b/d 0/24/8
+  seq 7  up 800 ms  I 5838 pA  T 32.81 C  batt 89 %  flags 0  islet a/b/d 0/24/8
+  seq 8  up 900 ms  I 5838 pA  T 32.81 C  batt 89 %  flags 0  islet a/b/d 0/24/8
+  seq 9  up 1000 ms  I 5838 pA  T 32.81 C  batt 89 %  flags 0  islet a/b/d 0/24/8
+RESULT PASS: 10 UART frames and 30 advertising packets (9600 on-air bits) compared, 0 lines differ

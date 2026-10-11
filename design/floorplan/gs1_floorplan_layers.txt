@@ -1,0 +1,10 @@
+GS-1 floorplan GDS (gs1_floorplan.gds), cell gs1_top_floorplan, units um, database unit 1 nm
+layer 1  die edge 1600 x 1600 um
+layer 2  core boundary
+layer 10 analog blocks
+layer 11 RF blocks
+layer 12 digital blocks
+layer 13 power management
+layer 20 pad openings 70 x 90 um
+layer 63 labels
+Layer numbers are placeholders; they are remapped to the foundry layer table when the PDK is installed.

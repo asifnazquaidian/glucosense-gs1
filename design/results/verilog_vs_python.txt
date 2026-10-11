@@ -1,0 +1,1 @@
+PASS 10 frames compared with the Python reference

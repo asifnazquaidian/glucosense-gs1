@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>GlucoSense - Wearable Glucose Monitor</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><img src="icon.svg" alt=""><div><b>GlucoSense</b><small>Wearable glucose monitor</small></div></div>
+  <div class="top-right">
+    <span id="connPill" class="pill off">Not connected</span>
+    <button id="themeBtn" class="icon-btn" title="Light / dark" aria-label="Toggle theme">&#9680;</button>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-view="live" class="on">Live</button>
+  <button data-view="signal">Signal</button>
+  <button data-view="islet">Islet</button>
+  <button data-view="log">Log</button>
+  <button data-view="reports">Reports</button>
+  <button data-view="device">Device</button>
+</nav>
+
+<main>
+  <!-- LIVE -->
+  <section id="view-live" class="view on">
+    <div id="connectBanner" class="card banner">
+      <div><b>No sensor connected</b><p>Connect the wearable over Bluetooth, or start the built-in simulator to try the app.</p></div>
+      <div class="row wrap"><button class="btn primary" data-act="sim">Start simulator</button><button class="btn" data-act="ble">Connect device</button><button class="btn" data-act="demo">Search nearby devices (demo)</button></div>
+    </div>
+    <div id="demoBanner" class="card banner" hidden>
+      <div><b>Demonstration signal</b><p>Shown as connected to <b id="demoName"></b>, chosen from the nearby Bluetooth devices. The readings are random data generated in the app to show how it works; nothing is measured by or read from that device.</p><p id="demoSig" class="muted"></p></div>
+      <div class="row"><button class="btn" data-act="stop">Stop demo</button></div>
+    </div>
+    <div class="grid hero-grid">
+      <div class="card hero" id="heroCard">
+        <div class="hero-label">Glucose <span id="gAge"></span></div>
+        <div class="hero-main"><span id="gVal">--</span><span id="gTrend" class="trend"></span></div>
+        <div class="hero-sub"><span id="gUnit">mg/dL</span> &middot; <span id="gRate">no trend yet</span></div>
+        <div id="gStatus" class="status">Waiting for data</div>
+      </div>
+      <div class="tiles">
+        <div class="card tile"><small>Sensor current</small><b id="tCur">--</b><span>nA</span></div>
+        <div class="card tile"><small>Skin temperature</small><b id="tTemp">--</b><span>&deg;C</span></div>
+        <div class="card tile"><small>Battery</small><b id="tBatt">--</b><span>%</span></div>
+        <div class="card tile"><small>Time in range (24 h)</small><b id="tTir">--</b><span>%</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Glucose trace</h2>
+        <div class="seg" id="winSeg"><button data-win="1">1h</button><button data-win="3">3h</button><button data-win="6">6h</button><button data-win="24">24h</button></div>
+      </div>
+      <canvas id="chartLive" class="chart tall"></canvas>
+      <div class="legend"><i class="sw in"></i>In range <i class="sw lo"></i>Low <i class="sw hi"></i>High <i class="sw band"></i>Target band <span class="muted">M meal &middot; I insulin &middot; E exercise &middot; C calibration</span></div>
+    </div>
+    <div class="card"><h2>Recent alerts</h2><ul id="alertFeed" class="feed"><li class="muted">No alerts.</li></ul></div>
+  </section>
+
+  <!-- SIGNAL -->
+  <section id="view-signal" class="view">
+    <div class="card">
+      <h2>Signal chain</h2>
+      <div class="chain">
+        <div><small>Electrode current</small><b id="scRaw">--</b><span>nA raw</span></div><i>&rarr;</i>
+        <div><small>Despike + smooth</small><b id="scFilt">--</b><span>nA filtered</span></div><i>&rarr;</i>
+        <div><small>Temp. compensation</small><b id="scComp">--</b><span>nA @ 33 &deg;C</span></div><i>&rarr;</i>
+        <div><small>Calibration</small><b id="scGlu">--</b><span id="scUnit">mg/dL</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Raw vs filtered current</h2><span class="muted">last 180 samples</span></div>
+      <canvas id="chartSignal" class="chart"></canvas>
+      <div class="legend"><i class="sw raw"></i>Raw <i class="sw in"></i>Filtered</div>
+    </div>
+    <div class="grid two">
+      <div class="card">
+        <h2>Conditioning</h2>
+        <label class="field">Smoothing (EMA &alpha; = <b id="alphaVal">0.25</b>)<input type="range" id="fAlpha" min="0.05" max="1" step="0.05"><small>Lower = smoother but slower to respond.</small></label>
+        <label class="check"><input type="checkbox" id="fMedian"> Median-of-5 despiking (removes motion artefacts)</label>
+        <label class="check"><input type="checkbox" id="fTemp"> Temperature compensation (2.5 % / &deg;C)</label>
+      </div>
+      <div class="card">
+        <h2>Noise performance</h2>
+        <table class="kv">
+          <tr><td>Raw noise (RMS)</td><td id="nRaw">--</td></tr>
+          <tr><td>Filtered noise (RMS)</td><td id="nFilt">--</td></tr>
+          <tr><td>Noise reduction</td><td id="nGain">--</td></tr>
+          <tr><td>Equivalent glucose noise</td><td id="nGlu">--</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ISLET (HEC model) -->
+  <section id="view-islet" class="view">
+    <div class="card">
+      <div class="card-head"><h2>Pancreatic islet model (HEC)</h2><span class="muted" id="isSrc">no data</span></div>
+      <div class="chain">
+        <div><small>&alpha; cells &middot; glucagon</small><b id="isA">--</b><span>spikes / period</span></div>
+        <div><small>&beta; cells &middot; insulin</small><b id="isB">--</b><span>spikes / period</span></div>
+        <div><small>&delta; cells &middot; somatostatin</small><b id="isD">--</b><span>spikes / period</span></div>
+        <div><small>&beta; activity vs basal</small><b id="isRel">--</b><span>&times; basal</span></div>
+      </div>
+      <p id="isStatus" class="hint">Waiting for data.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Islet cell activity</h2>
+        <div class="seg" id="isSeg"><button data-win="1">1h</button><button data-win="3">3h</button><button data-win="6">6h</button><button data-win="24">24h</button></div>
+      </div>
+      <canvas id="chartIslet" class="chart"></canvas>
+      <div class="legend"><i class="sw in"></i>&beta; cells <i class="sw hi"></i>&delta; cells <i class="sw lo"></i>&alpha; cells <span class="muted">spikes per model period (1024 steps)</span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Glucose for the same period</h2></div>
+      <canvas id="chartIsletG" class="chart"></canvas>
+    </div>
+    <div class="card">
+      <h2>About this model</h2>
+      <p class="muted">Hybrid Excitable Cell (HEC) model of pancreatic &alpha;, &beta; and &delta; cells from A. Mehmood, <i>Artificial Neuron Model for Large Scale Spiking Brain Neural Network</i>, PhD thesis, UET Taxila (section &ldquo;Pancreatic Cells&rdquo;). With every reading each cell is run for one period. &beta; and &delta; cells are driven by glucose above 80 mg/dL, &alpha; cells by glucose below 90 mg/dL.</p>
+      <p class="muted">The GS-1 chip computes these three numbers itself and sends them with each packet. For devices that send only the 14-byte packet, and for the simulator, the app runs the identical integer arithmetic. The link between glucose and cell drive is a design assumption that has not been validated against physiological data.</p>
+    </div>
+    <p class="disclaimer">Research prototype. Islet activity is a model output, not a measurement of the wearer&rsquo;s pancreas.</p>
+  </section>
+
+  <!-- LOG -->
+  <section id="view-log" class="view">
+    <div class="grid two">
+      <div class="card">
+        <h2>Add event</h2>
+        <div class="row wrap">
+          <select id="evKind"><option value="meal">Meal (g carbs)</option><option value="insulin">Insulin (units)</option><option value="exercise">Exercise (minutes)</option></select>
+          <input id="evAmount" type="number" min="0" step="any" placeholder="Amount" inputmode="decimal">
+          <button class="btn primary" id="evAdd">Add</button>
+        </div>
+        <p class="muted">Events are marked on the glucose trace. In simulator mode they also change the simulated glucose.</p>
+      </div>
+      <div class="card">
+        <h2>Calibrate with a finger-stick</h2>
+        <div class="row wrap">
+          <input id="calRef" type="number" min="0" step="any" placeholder="Meter reading" inputmode="decimal">
+          <span id="calUnit" class="muted">mg/dL</span>
+          <button class="btn primary" id="calAdd">Calibrate</button>
+          <button class="btn" id="calReset">Reset</button>
+        </div>
+        <p id="simRef" class="hint" hidden></p>
+        <table class="kv">
+          <tr><td>Sensitivity</td><td id="calS">--</td></tr>
+          <tr><td>Background current</td><td id="calI0">--</td></tr>
+          <tr><td>Calibration points</td><td id="calN">0</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card"><h2>Event log</h2><div class="scroll"><table class="list" id="evTable"></table></div></div>
+  </section>
+
+  <!-- REPORTS -->
+  <section id="view-reports" class="view">
+    <div class="card">
+      <div class="card-head"><h2>Summary</h2>
+        <div class="seg" id="repSeg"><button data-rep="3">3h</button><button data-rep="24" class="on">24h</button><button data-rep="0">All</button></div>
+      </div>
+      <div class="stats">
+        <div><small>Average</small><b id="rMean">--</b></div>
+        <div><small>Std. deviation</small><b id="rSd">--</b></div>
+        <div><small>Variability (CV)</small><b id="rCv">--</b></div>
+        <div><small>GMI (est. HbA1c)</small><b id="rGmi">--</b></div>
+        <div><small>Lowest</small><b id="rMin">--</b></div>
+        <div><small>Highest</small><b id="rMax">--</b></div>
+      </div>
+      <h3>Time in range</h3>
+      <div class="tirbar" id="tirBar"></div>
+      <div class="legend" id="tirLegend"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Trace for selected period</h2><button class="btn" id="csvBtn">Export CSV</button></div>
+      <canvas id="chartRep" class="chart"></canvas>
+      <p class="muted" id="repCount"></p>
+    </div>
+  </section>
+
+  <!-- DEVICE -->
+  <section id="view-device" class="view">
+    <div class="grid two">
+      <div class="card">
+        <h2>Connection</h2>
+        <p id="devState" class="muted">Not connected.</p>
+        <div class="row wrap">
+          <button class="btn primary" data-act="ble">Connect device (Bluetooth)</button>
+          <button class="btn" data-act="beacon">Listen for beacon (GS-1 chip)</button>
+          <button class="btn" data-act="demo">Search for nearby Bluetooth devices (demo)</button>
+          <button class="btn" data-act="sim">Start simulator</button>
+          <button class="btn danger" data-act="stop">Disconnect</button>
+        </div>
+        <p id="bleNote" class="hint" hidden></p>
+        <p id="beaconNote" class="hint" hidden></p>
+        <p id="nearMsg" class="hint" hidden></p>
+        <div id="nearList" class="nearlist"></div>
+        <label class="field">Simulator speed<select id="simSpeed"><option value="1">Real time</option><option value="60">60&times; (1 s = 1 min)</option><option value="300">300&times; (1 s = 5 min)</option></select></label>
+        <label class="field">Sample interval<select id="sampInt"><option value="250">250 ms</option><option value="1000">1 s</option><option value="5000">5 s</option></select></label>
+      </div>
+      <div class="card">
+        <h2>Link performance</h2>
+        <table class="kv">
+          <tr><td>Packets received</td><td id="pRx">0</td></tr>
+          <tr><td>Packets dropped</td><td id="pDrop">0</td></tr>
+          <tr><td>Delivery ratio</td><td id="pPdr">--</td></tr>
+          <tr><td>Packet rate</td><td id="pRate">--</td></tr>
+          <tr><td>Interval jitter (RMS)</td><td id="pJit">--</td></tr>
+          <tr><td>Device uptime</td><td id="pUp">--</td></tr>
+          <tr><td>Device flags</td><td id="pFlags">--</td></tr>
+          <tr><td>Data source</td><td id="pSrc">--</td></tr>
+          <tr><td>Bluetooth device</td><td id="pDev">--</td></tr>
+          <tr><td>Bluetooth link</td><td id="pLink">--</td></tr>
+          <tr><td>Bluetooth signal strength</td><td id="pRssi">--</td></tr>
+          <tr><td>Islet model runs</td><td id="pIslet">--</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="grid two">
+      <div class="card">
+        <h2>Settings</h2>
+        <label class="field">Units<select id="setUnits"><option value="mgdl">mg/dL</option><option value="mmol">mmol/L</option></select></label>
+        <div class="row wrap">
+          <label class="field half">Low alert below<input id="setLow" type="number" step="any"></label>
+          <label class="field half">High alert above<input id="setHigh" type="number" step="any"></label>
+        </div>
+        <label class="check"><input type="checkbox" id="setSound"> Alert sound and vibration</label>
+        <div class="row wrap"><button class="btn danger" id="clearBtn">Erase all stored data</button></div>
+      </div>
+      <div class="card">
+        <h2>BLE protocol</h2>
+        <table class="kv mono">
+          <tr><td>Service</td><td>6e5f0001-b5a3-&hellip;</td></tr>
+          <tr><td>Measurement (notify)</td><td>6e5f0002 &middot; 14 bytes</td></tr>
+          <tr><td>Control (write)</td><td>6e5f0003</td></tr>
+          <tr><td>Beacon (GS-1 chip)</td><td>adv. manufacturer data 0xFFFF</td></tr>
+          <tr><td>0&ndash;1</td><td>uint16 sequence</td></tr>
+          <tr><td>2&ndash;5</td><td>uint32 uptime ms</td></tr>
+          <tr><td>6&ndash;9</td><td>int32 current pA</td></tr>
+          <tr><td>10&ndash;11</td><td>int16 temp 0.01 &deg;C</td></tr>
+          <tr><td>12 / 13</td><td>battery % / flags</td></tr>
+          <tr><td>14&ndash;16 (GS-1 chip)</td><td>islet &alpha; / &beta; / &delta; spikes</td></tr>
+        </table>
+      </div>
+    </div>
+    <p class="disclaimer">Research prototype. GlucoSense is not a medical device and must not be used for diagnosis or treatment decisions.</p>
+  </section>
+</main>
+
+<div id="toasts"></div>
+<script src="proto.js"></script>
+<script src="hec.js"></script>
+<script src="sim.js"></script>
+<script src="ble.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

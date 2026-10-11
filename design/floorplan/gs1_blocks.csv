@@ -1,0 +1,11 @@
+block,description,x0_um,y0_um,x1_um,y1_um,area_mm2
+RF,"2.4 GHz BLE transceiver",400,880,1450,1450,0.599
+XO,"32 MHz crystal osc.",150,1180,380,1450,0.062
+LFO,"32 kHz timer osc.",150,880,380,1160,0.064
+REF,"Bandgap, temp. sensor",150,720,560,860,0.057
+ADC,"Sigma-delta modulator",150,500,560,700,0.082
+POT,"Potentiostat, TIA, bias DAC",150,150,560,480,0.135
+MCU,"MCU, BLE link layer, ROM, SRAM",580,500,1450,860,0.313
+GS1,"Sensing core + HEC islet",580,150,820,480,0.079
+OTP,"OTP trim, calibration",840,150,1060,480,0.073
+PMU,"LDOs, POR, battery monitor",1080,150,1450,480,0.122

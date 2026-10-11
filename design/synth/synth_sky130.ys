@@ -1,0 +1,8 @@
+read_verilog tinytapeout/src/project.v
+hierarchy -check -top tt_um_asifmehmood_glucosense
+synth -top tt_um_asifmehmood_glucosense -flatten
+dfflibmap -liberty ../../NeuroBit64/tools/pdk/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty ../../NeuroBit64/tools/pdk/sky130_fd_sc_hd__tt_025C_1v80.lib -D 125000
+opt_clean
+tee -o results/sky130_cells.txt stat -liberty ../../NeuroBit64/tools/pdk/sky130_fd_sc_hd__tt_025C_1v80.lib
+write_verilog -noattr results/gs1_sky130_netlist.v
